@@ -9,8 +9,8 @@ To set-up the CORS rules for your Azure account, you can use [azure-cors-rule-ma
 
 ## Credits
 
-* A lot of the client-side stuff is based on the code Gaurav Mantri provided in his blog post about [uploading large files to Azure blob storage using SAS ](http://gauravmantri.com/2013/02/16/uploading-large-files-in-windows-azure-blob-storage-using-shared-access-signature-html-and-javascript/)
-* Nick Drouin also wrote a few very helpful posts WAMS which I reccomend you take a look at:
+* A lot of the client-side stuff is based on the code Gaurav Mantri provided in his awesome blog post about [uploading large files to Azure blob storage using SAS ](http://gauravmantri.com/2013/02/16/uploading-large-files-in-windows-azure-blob-storage-using-shared-access-signature-html-and-javascript/)
+* Nick Drouin also wrote a few very helpful posts about WAMS which I reccomend you take a look at:
   * [Creating a simple media asset](http://blog-ndrouin.azurewebsites.net/?p=1261)
   * [A simple scenario: Upload, Encode and Package, Stream](http://blog-ndrouin.azurewebsites.net/?p=1931)
 
