@@ -3,6 +3,9 @@ WAMS async CORS enabled video upload demo
 
 This is an ASP.NET MVC demo application created as a proof-of-concept on how to do async CORS enabled video upload to Azure Media Services. To create WAMS assets and locators and to run WAMS encoding job/tasks, a WebAPI service using [WAMS .net SDK v3](http://www.nuget.org/packages/windowsazure.mediaservices) was used. By doing all that stuff on the server, it's easier to keep everything secure since your Azure credentials are not public and you are the one in charge of creating all the assets, locators and jobs. WAMS REST API was used only to upload chunks of data directly to Azure. By uploading the data directly to Azure, both CPU load and bandwidth consumption of the server hosting the web application are lowered (just imagine a scenario where your web application is not hosted through Azure and all the blob data needs to go through it for each file upload).
 
+## WAMS configuration
+Your WAMS credentials need to be entered in web.config => appSettings ("wamsAccountName" and "wamsAccountKey") for the application to work.
+
 ## CORS rules setup
 
 To set-up the CORS rules for your Azure account, you can use [azure-cors-rule-manager](https://github.com/pootzko/azure-cors-rule-manager).
