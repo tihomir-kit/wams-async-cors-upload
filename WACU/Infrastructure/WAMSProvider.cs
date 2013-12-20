@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Web;
+using WACU.Models;
 
 namespace WACU.Infrastructure
 {
@@ -13,7 +14,7 @@ namespace WACU.Infrastructure
         #region Fields
         private CloudMediaContext _cmContext = null;
         private int _estimatedUploadMaxTime = 3600; // seconds
-        private int _videoAvailableFor = 20000; // days
+        private int _videoAvailableFor = 50000; // days
         private static readonly string _encoderProcessorName = "Windows Azure Media Encoder";
         private static readonly string _packagerProcessorName = "Windows Azure Media Packager";
         private static readonly string _uploadAccessPolicyName = "Video Upload Access Policy";
@@ -26,15 +27,6 @@ namespace WACU.Infrastructure
         public WAMSProvider()
         {
             _cmContext = GetContext();
-        }
-
-        /// <summary>
-        /// Creates WAMSProvider instance.
-        /// </summary>
-        /// <returns>WAMSProvider instance.</returns>
-        public static WAMSProvider GetInstance()
-        {
-            return new WAMSProvider();
         }
         #endregion
 
@@ -50,7 +42,7 @@ namespace WACU.Infrastructure
 
         #region Access Policies
         /// <summary>
-        /// Gets WAMS upload access policy.
+        /// Gets WAMS upload access policy if it already exists, if not - creates one.
         /// </summary>
         /// <returns>Access policy.</returns>
         protected virtual IAccessPolicy GetUploadAccessPolicy()
@@ -64,7 +56,7 @@ namespace WACU.Infrastructure
         }
 
         /// <summary>
-        /// Creates WAMS upload access policy.
+        /// Creates new WAMS upload access policy.
         /// </summary>
         /// <returns>Access policy.</returns>
         protected virtual IAccessPolicy CreateUploadAccessPolicy()
@@ -82,9 +74,9 @@ namespace WACU.Infrastructure
         /// </summary>
         /// <param name="fileName">FileName for the asset to be created.</param>
         /// <returns>WAMSAsset object with upload uri and asset name.</returns>
-        public WAMSAsset CreateWAMSAsset(string fileName)
+        public WAMSAssetModel CreateWAMSAsset(string fileName)
         {
-            // ResetWAMS(); // TODO: remove, only for testing to keep storage clean and easy to navigate
+            // ResetWAMS(); // only for testing to keep storage clean and easy to navigate through the web interface
 
             if (!VideoFileTypeAllowed(fileName))
                 throw new Exception("Unsupported file type.");
@@ -93,17 +85,17 @@ namespace WACU.Infrastructure
             IAsset asset = _cmContext.Assets.Create(assetName, AssetCreationOptions.None);
             IAssetFile assetFile = asset.AssetFiles.Create(fileName);
             IAccessPolicy writePolicy = GetUploadAccessPolicy();
-            ILocator destinationLocator = _cmContext.Locators.CreateSasLocator(asset, writePolicy, DateTime.UtcNow.AddMinutes(-5));
+            ILocator uploadLocator = _cmContext.Locators.CreateSasLocator(asset, writePolicy, DateTime.UtcNow.AddMinutes(-5));
 
-            var uri = new Uri(destinationLocator.Path).AbsoluteUri;
-            return new WAMSAsset() { Uri = uri, Id = asset.Id };
+            var uri = new Uri(uploadLocator.Path).AbsoluteUri;
+            return new WAMSAssetModel() { Uri = uri, Id = asset.Id };
         }
 
         /// <summary>
-        /// Publishes a WAMS asset and returns locator (public link for the default asset blob).
+        /// Publishes a WAMS asset and returns locators for created assets (public links for their default asset blobs).
         /// </summary>
-        /// <param name="assetId">Asset id.</param>
-        /// <param name="fileName">Blob file name.</param>
+        /// <param name="assetId">Original asset Id.</param>
+        /// <param name="fileName">Original blob file name.</param>
         /// <returns>WAMS locators dictionary.</returns>
         public IDictionary<string, string> PublishWAMSAsset(string assetId, string fileName)
         {
@@ -118,8 +110,8 @@ namespace WACU.Infrastructure
             var broadband720Asset = job.OutputMediaAssets.FirstOrDefault(p => p.Name.Contains("Broadband720"));
 
             var originalVideoLocator = CreateVideoLocator(asset, fileName);
-            var broadbandSDVideoLocator = CreateVideoLocator(broadbandSDAsset, broadbandSDAsset.AssetFiles.Where(p => p.Name.EndsWith(".mp4")).FirstOrDefault().Name);
-            var broadband720VideoLocator = CreateVideoLocator(broadband720Asset, broadband720Asset.AssetFiles.Where(p => p.Name.EndsWith(".mp4")).FirstOrDefault().Name);
+            var broadbandSDVideoLocator = CreateVideoLocatorForEncodedAsset(broadbandSDAsset);
+            var broadband720VideoLocator = CreateVideoLocatorForEncodedAsset(broadband720Asset);
 
             //// Smooth asset locator cration example
             //var abrAsset = job.OutputMediaAssets.FirstOrDefault(p => p.Name.Contains("Adaptive"));
@@ -146,20 +138,32 @@ namespace WACU.Infrastructure
             assetFile.Update();
         }
 
+        #region Locators
+        /// <summary>
+        /// Creates a locator for a file (for encoded asset) within an Azure asset.
+        /// </summary>
+        /// <param name="asset">Azure asset.</param>
+        /// <returns>WAMSLocator object which contains Uri params (Url base, path and query).</returns>
+        protected virtual WAMSLocatorModel CreateVideoLocatorForEncodedAsset(IAsset asset)
+        {
+            var fileName = asset.AssetFiles.Where(p => p.Name.EndsWith(".mp4")).FirstOrDefault().Name;
+            return CreateVideoLocator(asset, fileName);
+        }
+
         /// <summary>
         /// Creates a locator for a file within an Azure asset.
         /// </summary>
         /// <param name="asset">Azure asset.</param>
         /// <param name="fileName">File name of the file for which a locator is to be created.</param>
         /// <returns>WAMSLocator object which contains Uri params (Url base, path and query).</returns>
-        protected virtual WAMSLocator CreateVideoLocator(IAsset asset, string fileName)
-        {
+        protected virtual WAMSLocatorModel CreateVideoLocator(IAsset asset, string fileName)
+        {            
             var assetFile = asset.AssetFiles.Where(p => p.Name == fileName).FirstOrDefault();
             var accessPolicy = _cmContext.AccessPolicies.Create(asset.Name, TimeSpan.FromDays(_videoAvailableFor), AccessPermissions.Read | AccessPermissions.List);
             var locator = _cmContext.Locators.CreateLocator(LocatorType.Sas, asset, accessPolicy);
             var videoUri = new UriBuilder(locator.Path);
 
-            return new WAMSLocator()
+            return new WAMSLocatorModel()
             {
                 UrlBase = String.Format("{0}://{1}", videoUri.Scheme, videoUri.Host),
                 Path = String.Format("{0}/{1}", videoUri.Path, fileName),
@@ -169,53 +173,23 @@ namespace WACU.Infrastructure
 
         /// <summary>
         /// Creates smooth package locator.
-        /// Uri can be tested at: http://smf.cloudapp.net/healthmonitor
+        /// Uris created with this method can be tested at: http://smf.cloudapp.net/healthmonitor
         /// </summary>
         /// <param name="asset">Azure asset.</param>
         /// <returns>WAMSLocator object which contains Uri params (Url base, path and query).</returns>
-        protected virtual WAMSLocator CreateSmoothPackageLocator(IAsset asset)
+        protected virtual WAMSLocatorModel CreateSmoothPackageLocator(IAsset asset)
         {
             var assetFile = asset.AssetFiles.Where(p => p.Name.EndsWith(".ism")).FirstOrDefault();
             var accessPolicy = _cmContext.AccessPolicies.Create(asset.Name, TimeSpan.FromDays(_videoAvailableFor), AccessPermissions.Read | AccessPermissions.List);
             var locator = _cmContext.Locators.CreateLocator(LocatorType.OnDemandOrigin, asset, accessPolicy);
             var videoUri = new UriBuilder(String.Format("{0}{1}/manifest", locator.Path, assetFile.Name));
 
-            return new WAMSLocator()
+            return new WAMSLocatorModel()
             {
                 UrlBase = String.Format("{0}://{1}", videoUri.Scheme, videoUri.Host),
                 Path = videoUri.Path,
                 Query = videoUri.Query
             };
-        }
-
-        /// <summary>
-        /// Checks if file type is allowed.
-        /// </summary>
-        /// <param name="fileName">File name.</param>
-        /// <returns>Is allowed?</returns>
-        protected virtual bool VideoFileTypeAllowed(string fileName)
-        {
-            var fileExtension = Path.GetExtension(fileName);
-            var allowedExtensions = GetAllowedVideoFileExtensions();
-            return allowedExtensions.Contains(fileExtension);
-        }
-
-        /// <summary>
-        /// Gets a list of video file extensions which are allowed for upload.
-        /// </summary>
-        /// <returns>List of file extensions.</returns>
-        protected virtual IList<string> GetAllowedVideoFileExtensions()
-        {
-            return AppSettings.WamsAllowedVideoFileExtensions.Split(',').ToList();
-        }
-
-        /// <summary>
-        /// Clears Assets and AccessPolicies.
-        /// </summary>
-        private void ResetWAMS()
-        {
-            _cmContext.Assets.ToList().ForEach(p => p.Delete());
-            _cmContext.AccessPolicies.ToList().ForEach(p => p.Delete());
         }
         #endregion
 
@@ -263,16 +237,16 @@ namespace WACU.Infrastructure
         /// <summary>
         /// Processes (encoding/packaging) a video asset.
         /// </summary>
-        /// <param name="asset">Original video asset to process.</param>
-        /// <param name="fileName">Blob file name.</param>
+        /// <param name="asset">Original video asset to be processed.</param>
+        /// <param name="fileName">Original video blob file name.</param>
         /// <returns>IJob entity.</returns>
         protected virtual IJob ProcessVideo(IAsset asset, string fileName)
         {
             IJob job = _cmContext.Jobs.Create(String.Format("Asset job: {0}", asset.Id));
 
+            // Creation of chained encoding tasks (SD version is created out of 720p version asset)
             var broadband720Asset = CreateVideoEncodingTask(asset, fileName, job, "Broadband720p", "H264 Broadband 720p");
             var broadbandSDAsset = CreateVideoEncodingTask(broadband720Asset, fileName, job, "BroadbandSD", "H264 Broadband SD 16x9");
-
 
             //// Adaptive to Smooth asset creation examples (chained job)
             //var abrAsset = CreateVideoEncodingTask(asset, fileName, job, "Adaptive", "H264 Adaptive Bitrate MP4 Set 720p");
@@ -289,7 +263,7 @@ namespace WACU.Infrastructure
         /// Creates a video encoding task.
         /// </summary>
         /// <param name="asset">Asset to encode.</param>
-        /// <param name="fileName">Video file name.</param>
+        /// <param name="fileName">Original video file name.</param>
         /// <param name="job">IJob entity.</param>
         /// <param name="configuration">Encoding configuration preset.</param>
         /// <returns>Newly created video "encode" asset.</returns>
@@ -311,7 +285,7 @@ namespace WACU.Infrastructure
         /// Creates a video packaging task (Smooth).
         /// </summary>
         /// <param name="asset">Asset to package (must be Adaptive Bitrate Mp4).</param>
-        /// <param name="fileName">Video file name.</param>
+        /// <param name="fileName">Original video file name.</param>
         /// <param name="job">IJob entity.</param>
         /// <returns>Newly created video "smooth" asset.</returns>
         protected virtual IAsset CreateVideoSmoothPackagingTask(IAsset asset, string fileName, IJob job)
@@ -333,14 +307,45 @@ namespace WACU.Infrastructure
         /// Logs job state to debug (on state change).
         /// </summary>
         /// <param name="sender">Sender.</param>
-        /// <param name="e">Event args.</param>
-        static void JobStateChanged(object sender, JobStateChangedEventArgs e)
+        /// <param name="evtArgs">Event args.</param>
+        static void JobStateChanged(object sender, JobStateChangedEventArgs evtArgs)
         {
-            System.Diagnostics.Debug.WriteLine(string.Format("{0} - State: {1};  Time: {2};", ((IJob)sender).Name, e.CurrentState, DateTime.UtcNow.ToString(@"yyyy_M_d__hh_mm_ss")));
+            System.Diagnostics.Debug.WriteLine(string.Format("{0} - State: {1};  Time: {2};", ((IJob)sender).Name, evtArgs.CurrentState, DateTime.UtcNow.ToString(@"yyyy_M_d__hh_mm_ss")));
         }
+        #endregion
         #endregion
 
         #region Other
+        /// <summary>
+        /// Checks if file type is allowed.
+        /// </summary>
+        /// <param name="fileName">File name.</param>
+        /// <returns>Is allowed?</returns>
+        protected virtual bool VideoFileTypeAllowed(string fileName)
+        {
+            var fileExtension = Path.GetExtension(fileName);
+            var allowedExtensions = GetAllowedVideoFileExtensions();
+            return allowedExtensions.Contains(fileExtension);
+        }
+
+        /// <summary>
+        /// Gets a list of video file extensions which are allowed for upload.
+        /// </summary>
+        /// <returns>List of file extensions.</returns>
+        protected virtual IList<string> GetAllowedVideoFileExtensions()
+        {
+            return AppSettings.WamsAllowedVideoFileExtensions.Split(',').ToList();
+        }
+
+        /// <summary>
+        /// Clears Assets and AccessPolicies.
+        /// </summary>
+        private void ResetWAMS()
+        {
+            _cmContext.Assets.ToList().ForEach(p => p.Delete());
+            _cmContext.AccessPolicies.ToList().ForEach(p => p.Delete());
+        }
+
         /// <summary>
         /// Strips a file name of all the invalid characters.
         /// </summary>
@@ -356,29 +361,12 @@ namespace WACU.Infrastructure
         /// </summary>
         /// <param name="locator">WAMS locator.</param>
         /// <returns>UrlEncoded locator URI.</returns>
-        private string EncodeLocator(WAMSLocator locator)
+        private string EncodeLocator(WAMSLocatorModel locator)
         {
             var encodedQuery = HttpUtility.UrlEncode(locator.Query);
             return String.Format("{0}{1}", locator.UrlWithPath, encodedQuery);
         }
         #endregion
         #endregion
-    }
-
-    public class WAMSAsset
-    {
-        public string Uri { get; set; }
-        public string Id { get; set; }
-    }
-
-    public class WAMSLocator
-    {
-        public string UrlBase { get; set; }
-        public string Path { get; set; }
-        public string Query { get; set; }
-        public string UrlWithPath
-        {
-            get { return String.Format("{0}{1}", this.UrlBase, this.Path); }
-        }
     }
 }

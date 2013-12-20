@@ -9,11 +9,19 @@
     var selectedFile = null;
     var submitUri = null;
     var assetId = null;
+    var fileReader = null;
+
+    (function () {
+        if (window.File && window.FileReader && window.FileList && window.Blob) {
+            fileReader = new FileReader();
+            initializeFileReaderOnLoadEnd();
+        }
+    })();
 
     // Initializes AzureStorage variables
     function initializeVariables() {
         blockIds = new Array();
-        maxBlockSize = 1024 * 1024; // Each file will be split into 1024 KB chunks.
+        maxBlockSize = 1024 * 512; // Each file will be split into 512 KB chunks.
         bytesUploaded = 0;
         currentFilePointer = 0;
         totalBytesRemaining = 0;
@@ -21,7 +29,7 @@
 
     // Initializes DOM elements
     function initializeDOMElements() {
-        $("#preparing-file").show();
+        displayNotificationMessage("Preparing the file for upload...");
         $("#upload-button").hide();
         $("#upload-progress-holder").hide();
         $("#upload-progress").text("0.00");
@@ -29,7 +37,7 @@
 
     // Reads the file and finds out the number of blocks it needs to be split into
     AzureStorage.handleFileSelect = function (evt) {
-        clearErrorMessage();
+        clearMessages();
         initializeDOMElements();
         initializeVariables();
 
@@ -43,8 +51,6 @@
         totalBytesRemaining = fileSize;
         setWAMSUri(selectedFile.name);
     }
-
-    var fileReader = new FileReader();
 
     // Reads file chunks or commits block list if all chunks have been uploaded already
     AzureStorage.uploadFileInBlocks = function () {
@@ -67,30 +73,33 @@
         }
     }
 
-    // Uploads a chunk of a file
-    fileReader.onloadend = function (evt) {
-        if (evt.target.readyState == FileReader.DONE) { // DONE == 2
-            var uri = submitUri + '&comp=block&blockid=' + blockIds[blockIds.length - 1];
-            var requestData = new Uint8Array(evt.target.result);
+    // Initializes FileReader onloadend event handler
+    function initializeFileReaderOnLoadEnd() {
+        // Uploads a chunk of a file on file loaded
+        fileReader.onloadend = function (evt) {
+            if (evt.target.readyState == FileReader.DONE) { // DONE == 2
+                var uri = submitUri + '&comp=block&blockid=' + blockIds[blockIds.length - 1];
+                var requestData = new Uint8Array(evt.target.result);
 
-            $.ajax({
-                url: uri,
-                type: "PUT",
-                headers: { 'x-ms-blob-type': 'BlockBlob' },
-                data: requestData,
-                processData: false
-            })
-            .done(function (data, status) {
-                bytesUploaded += requestData.length;
-                var percentComplete = ((parseFloat(bytesUploaded) / parseFloat(selectedFile.size)) * 100).toFixed(2);
-                $("#upload-progress").text(percentComplete);
-                AzureStorage.uploadFileInBlocks();
-            })
-            .fail(function (xhr, status, err) {
-                displayErrorMessage(err);
-            });
-        }
-    };
+                $.ajax({
+                    url: uri,
+                    type: "PUT",
+                    headers: { 'x-ms-blob-type': 'BlockBlob' },
+                    data: requestData,
+                    processData: false
+                })
+                .done(function (data, status) {
+                    bytesUploaded += requestData.length;
+                    var percentComplete = ((parseFloat(bytesUploaded) / parseFloat(selectedFile.size)) * 100).toFixed(2);
+                    $("#upload-progress").text(percentComplete);
+                    AzureStorage.uploadFileInBlocks();
+                })
+                .fail(function (xhr, status, err) {
+                    displayErrorMessage(err);
+                });
+            }
+        };
+    }
 
     // Calls WAMS service CreateWAMSAsset which creates a new WAMS asset and returns the submitUri needed for upload start
     function setWAMSUri(fileName) {
@@ -107,7 +116,7 @@
             var indexOfQueryStart = baseUri.indexOf("?");
             submitUri = baseUri.substring(0, indexOfQueryStart) + '/' + selectedFile.name + baseUri.substring(indexOfQueryStart);
             $("#upload-button").show();
-            $("#preparing-file").hide();
+            clearNotificationMessage();
         })
         .fail(function (xhr, status, err) {
             displayErrorMessage(err);
@@ -134,6 +143,7 @@
             data: requestBody
         })
         .done(function (data, status) {
+            displayNotificationMessage("Upload complete, encoding task started. This might take a while, please wait...");
             publishWAMSAsset();
         })
         .fail(function (xhr, status, err) {
@@ -171,6 +181,7 @@
             dataType: "json"
         })
         .done(function (data, status) {
+            clearNotificationMessage();
             displayVideos(data.wamsLocators);
         })
         .fail(function (xhr, status, err) {
@@ -178,20 +189,35 @@
         });
     }
 
-    // Clears error message holder
-    function clearErrorMessage() {
-        $("#error-message-holder").empty();
+    // Clears notification message
+    function clearNotificationMessage() {
+        $("#notification").empty();
     }
 
-    // Displays error message in error message holder
+    // Clears error message
+    function clearErrorMessage() {
+        $("#error-message").empty();
+    }
+
+    // Clears notification and error messages
+    function clearMessages() {
+        clearNotificationMessage();
+        clearErrorMessage();
+    }
+
+    // Displays notification message
+    function displayNotificationMessage(notificationMessage) {
+        $("#notification").text(notificationMessage);
+    }
+
+    // Displays error message
     function displayErrorMessage(errorMessage) {
         if (errorMessage != undefined && errorMessage != null && errorMessage.length != 0)
-            $("#error-message-holder").text("Error: " + errorMessage);
+            $("#error-message").text("Error: " + errorMessage);
     }
 
     // Displays uploaded videos
     function displayVideos(videoUris) {
-        console.log(videoUris);
         $.each(videoUris, function (index, element) {
             console.log(decodeURIComponent(element));
 
@@ -214,13 +240,12 @@ $(document).ready(function () {
     $("#file-info").hide();
     $("#upload-progress-holder").hide();
 
-    $("#file").change(AzureStorage.handleFileSelect);
-    $("#upload-button").click(AzureStorage.uploadFileInBlocks);
-
     if (window.File && window.FileReader && window.FileList && window.Blob) {
         // Great success! All the File APIs are supported.
+        $("#file").change(AzureStorage.handleFileSelect);
+        $("#upload-button").click(AzureStorage.uploadFileInBlocks);
     }
     else {
-        alert("The File APIs are not fully supported in this browser.");
+        alert("Not all File APIs are fully supported in this browser.");
     }
 });

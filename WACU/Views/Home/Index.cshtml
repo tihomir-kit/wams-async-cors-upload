@@ -1,39 +1,25 @@
 ﻿@{
-    ViewBag.Title = "WAMS async CORS enabled upload demo";
+    ViewBag.Title = "WAMS async CORS enabled video upload demo";
 }
 
-<h1>@ViewBag.Title</h1>
+<h2>@ViewBag.Title</h2>
 
 <form>
     <div>
-        <h2>Video Upload</h2>
-
         <div>
-            <h3>File To Upload</h3>
+            <p id="notification"></p>
+            <p id="error-message"></p>
+            <h3>File to Upload</h3>
             <input type="file" id="file" name="file"/>
-            <p id="error-message-holder"></p>
         </div>
 
         <div id="file-info">
             <h3>File Info:</h3>
-            <p>
-                Name: <span id="file-name"></span>
-            </p>
-            <p>
-                File Size: <span id="file-size"></span> bytes.
-            </p>
-            <p>
-                File Type: <span id="file-type"></span>
-            </p>
-            <p id="preparing-file">
-                Preparing the file for upload...
-            </p>
-            <p>
-                <input id="upload-button" type="button" value="Upload File" />
-            </p>
-            <p id="upload-progress-holder">
-                <strong>Progress</strong>: <span id="upload-progress">0.00</span> %
-            </p>
+            <p>Name: <span id="file-name"></span></p>
+            <p>File Size: <span id="file-size"></span> bytes.</p>
+            <p>File Type: <span id="file-type"></span></p>
+            <p><input id="upload-button" type="button" value="Upload File" /></p>
+            <p id="upload-progress-holder"><strong>Progress</strong>: <span id="upload-progress">0.00</span> %</p>
         </div>
     </div>
 </form>

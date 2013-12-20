@@ -29,7 +29,7 @@ namespace WACU.Controllers
         [HttpPost]
         public HttpResponseMessage CreateAsset(CreateAssetModel model)
         {
-            var asset = new WAMSAsset();
+            var asset = new WAMSAssetModel();
             try
             {
                 asset = _wamsProvider.CreateWAMSAsset(_wamsProvider.SanitizeFileName(model.FileName));
