@@ -8,6 +8,12 @@ The application uses a WebAPI service with [WAMS .net SDK v3](http://www.nuget.o
 ## CORS rules setup
 
 To set-up the CORS rules for your Azure account, you can use [azure-cors-rule-manager](https://github.com/pootzko/azure-cors-rule-manager)
+You will need to create a CORS rule with the following settings for WACU to work:
+* **Allowed origins:** http://yourdoman
+* **Allowed methods:** PUT
+* **Allowed headers:** content-type, accept, x-ms-*
+* **Exposed headers:** x-ms-*
+* **Max age (seconds):** 3600 (you can set a lower or higher value for this one)
 
 ## Credits
 

@@ -13,8 +13,6 @@ namespace WACU.Infrastructure
     {
         #region Fields
         private CloudMediaContext _cmContext = null;
-        private int _estimatedUploadMaxTime = 3600; // seconds
-        private int _videoAvailableFor = 50000; // days
         private static readonly string _encoderProcessorName = "Windows Azure Media Encoder";
         private static readonly string _packagerProcessorName = "Windows Azure Media Packager";
         private static readonly string _uploadAccessPolicyName = "Video Upload Access Policy";
@@ -63,7 +61,7 @@ namespace WACU.Infrastructure
         {
             return _cmContext.AccessPolicies.Create(
                 _uploadAccessPolicyName,
-                TimeSpan.FromMinutes(_estimatedUploadMaxTime),
+                TimeSpan.FromMinutes(AppSettings.WamsUploadLocatorValidFor),
                 AccessPermissions.Write); //AccessPermissions.Write | AccessPermissions.List);
         }
         #endregion
@@ -159,7 +157,7 @@ namespace WACU.Infrastructure
         protected virtual WAMSLocatorModel CreateVideoLocator(IAsset asset, string fileName)
         {            
             var assetFile = asset.AssetFiles.Where(p => p.Name == fileName).FirstOrDefault();
-            var accessPolicy = _cmContext.AccessPolicies.Create(asset.Name, TimeSpan.FromDays(_videoAvailableFor), AccessPermissions.Read | AccessPermissions.List);
+            var accessPolicy = _cmContext.AccessPolicies.Create(asset.Name, TimeSpan.FromDays(AppSettings.WamsVideoAvailableFor), AccessPermissions.Read | AccessPermissions.List);
             var locator = _cmContext.Locators.CreateLocator(LocatorType.Sas, asset, accessPolicy);
             var videoUri = new UriBuilder(locator.Path);
 
@@ -180,7 +178,7 @@ namespace WACU.Infrastructure
         protected virtual WAMSLocatorModel CreateSmoothPackageLocator(IAsset asset)
         {
             var assetFile = asset.AssetFiles.Where(p => p.Name.EndsWith(".ism")).FirstOrDefault();
-            var accessPolicy = _cmContext.AccessPolicies.Create(asset.Name, TimeSpan.FromDays(_videoAvailableFor), AccessPermissions.Read | AccessPermissions.List);
+            var accessPolicy = _cmContext.AccessPolicies.Create(asset.Name, TimeSpan.FromDays(AppSettings.WamsVideoAvailableFor), AccessPermissions.Read | AccessPermissions.List);
             var locator = _cmContext.Locators.CreateLocator(LocatorType.OnDemandOrigin, asset, accessPolicy);
             var videoUri = new UriBuilder(String.Format("{0}{1}/manifest", locator.Path, assetFile.Name));
 

@@ -38,6 +38,36 @@ namespace WACU.Infrastructure
             }
         }
 
+        private static int _wamsUploadLocatorValidFor = 0;
+        /// <summary>
+        /// Gets WamsUploadLocatorValidFor.
+        /// </summary>
+        public static int WamsUploadLocatorValidFor
+        {
+            get
+            {
+                if (_wamsUploadLocatorValidFor == 0)
+                    int.TryParse(WebConfigurationManager.AppSettings["wamsUploadLocatorValidFor"], out _wamsUploadLocatorValidFor);
+
+                return _wamsUploadLocatorValidFor;
+            }
+        }
+
+        private static int _wamsVideoAvailableFor = 0;
+        /// <summary>
+        /// Gets WamsVideoAvailableFor.
+        /// </summary>
+        public static int WamsVideoAvailableFor
+        {
+            get
+            {
+                if (_wamsVideoAvailableFor == 0)
+                    int.TryParse(WebConfigurationManager.AppSettings["wamsVideoAvailableFor"], out _wamsVideoAvailableFor);
+
+                return _wamsVideoAvailableFor;
+            }
+        }
+
         private static string _wamsAllowedVideoFileExtensions = null;
         /// <summary>
         /// Gets WamsAllowedVideoFileExtensions.
