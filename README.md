@@ -10,7 +10,7 @@ Your WAMS credentials need to be entered in web.config => appSettings ("wamsAcco
 
 To set-up the CORS rules for your Azure account, you can use [azure-cors-rule-manager](https://github.com/pootzko/azure-cors-rule-manager).
 You will need to create a CORS rule with the following settings for WACU to work:
-* **Allowed origins:** http://yourdoman
+* **Allowed origins:** http://yourdomain
 * **Allowed methods:** PUT
 * **Allowed headers:** content-type, accept, x-ms-*
 * **Exposed headers:** x-ms-*
