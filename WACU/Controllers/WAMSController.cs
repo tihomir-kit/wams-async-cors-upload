@@ -12,6 +12,10 @@ using WACU.Models;
 
 namespace WACU.Controllers
 {
+    /// <summary>
+    /// IMPORTANT: To secure the website, authorization can be implemented to actions in this controller
+    /// Since this is a proof-of-concept app, I just didn't bother implementing it
+    /// </summary>
     public class WAMSController : ApiController
     {
         private WAMSProvider _wamsProvider = null;
