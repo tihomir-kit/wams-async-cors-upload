@@ -167,7 +167,9 @@
     <Compile Include="Models\CreateAssetModel.cs" />
     <Compile Include="Models\PublishAssetModel.cs" />
     <Compile Include="Models\WAMSAssetModel.cs" />
+    <Compile Include="Models\WAMSJobLocatorsModel.cs" />
     <Compile Include="Models\WAMSLocatorModel.cs" />
+    <Compile Include="Models\WAMSTaskAssetsModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

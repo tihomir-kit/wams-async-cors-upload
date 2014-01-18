@@ -219,14 +219,14 @@
     // Displays uploaded videos
     function displayVideos(videoUris) {
         $.each(videoUris, function (index, element) {
-            console.log(decodeURIComponent(element));
+            console.log(element.FullUrl);
 
             var video = $("<video/>", {
                 controls: true
             });
 
             var source = $("<source/>", {
-                src: decodeURIComponent(element)
+                src: element.FullUrl
             }).appendTo(video);
 
             $("#videos-holder").append(video);

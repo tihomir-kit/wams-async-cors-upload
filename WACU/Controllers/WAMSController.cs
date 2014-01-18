@@ -49,11 +49,11 @@ namespace WACU.Controllers
         /// Publishes WAMS asset.
         /// </summary>
         /// <param name="model">PublishAsset model which contains id of the asset to be published and blob file name.</param>
-        /// <returns>WAMS locators dictionary.</returns>
+        /// <returns>WAMSJobLocators model entity.</returns>
         [HttpPost]
         public HttpResponseMessage PublishAsset(PublishAssetModel model)
         {
-            IDictionary<string, string> wamsLocators = new Dictionary<string, string>();
+            WAMSJobLocatorsModel wamsLocators = null;
             try
             {
                 wamsLocators = _wamsProvider.PublishWAMSAsset(model.AssetId, _wamsProvider.SanitizeFileName(model.FileName));

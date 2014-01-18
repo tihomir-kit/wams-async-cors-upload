@@ -29,5 +29,13 @@ namespace WACU.Models
         {
             get { return String.Format("{0}{1}", this.UrlBase, this.Path); }
         }
+
+        /// <summary>
+        /// Calculates full url.
+        /// </summary>
+        public string FullUrl
+        {
+            get { return String.Format("{0}{1}", this.UrlWithPath, this.Query); }
+        }
     }
 }

@@ -8,6 +8,52 @@ namespace WACU.Infrastructure
 {
     public static class AppSettings
     {
+        private static string _azureAccountName = null;
+        /// <summary>
+        /// Gets AzureAccountName.
+        /// </summary>
+        public static string AzureAccountName
+        {
+            get
+            {
+                if (_azureAccountName == null)
+                    _azureAccountName = WebConfigurationManager.AppSettings["azureAccountName"];
+
+                return _azureAccountName;
+            }
+        }
+
+        private static string _azureAccountKey = null;
+        /// <summary>
+        /// Gets AzureAccountKey.
+        /// </summary>
+        public static string AzureAccountKey
+        {
+            get
+            {
+                if (_azureAccountKey == null)
+                    _azureAccountKey = WebConfigurationManager.AppSettings["azureAccountKey"];
+
+                return _azureAccountKey;
+            }
+        }
+
+        private static int _azureMaxFileSize = 0;
+        /// <summary>
+        /// Gets AzureMaxFileSize.
+        /// </summary>
+        public static int AzureMaxFileSize
+        {
+            get
+            {
+                if (_azureMaxFileSize == 0)
+                    int.TryParse(WebConfigurationManager.AppSettings["azureMaxFileSize"], out _azureMaxFileSize);
+
+                return _azureMaxFileSize;
+            }
+        }
+
+        #region Windows Azure Media Services
         private static string _wamsAccountName = null;
         /// <summary>
         /// Gets WamsAccountName.
@@ -82,5 +128,6 @@ namespace WACU.Infrastructure
                 return _wamsAllowedVideoFileExtensions;
             }
         }
+        #endregion
     }
 }
