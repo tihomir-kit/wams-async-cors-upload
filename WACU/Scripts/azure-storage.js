@@ -1,5 +1,6 @@
 ﻿(function (AzureStorage, $) {
     var maxBlockSize = 0; // Real value iitialized in initializeVariables() method
+    var maxFileSize = 1073741824; // Bytes
     var blockIds = new Array();
     var blockIdPrefix = "block-";
     var blockIdLength = 10;
@@ -18,6 +19,15 @@
         }
     })();
 
+    // Initializes DOM elements
+    function initializeDOMElements() {
+        displayNotificationMessage("Preparing the file for upload...");
+        $("#file-select-button").prop('disabled', true);
+        $("#upload-button").hide();
+        $("#upload-progress-holder").hide();
+        $("#upload-progress").text("0.00");
+    }
+
     // Initializes AzureStorage variables
     function initializeVariables() {
         blockIds = new Array();
@@ -25,14 +35,6 @@
         bytesUploaded = 0;
         currentFilePointer = 0;
         totalBytesRemaining = 0;
-    }
-
-    // Initializes DOM elements
-    function initializeDOMElements() {
-        displayNotificationMessage("Preparing the file for upload...");
-        $("#upload-button").hide();
-        $("#upload-progress-holder").hide();
-        $("#upload-progress").text("0.00");
     }
 
     // Reads the file and finds out the number of blocks it needs to be split into
@@ -45,15 +47,22 @@
         setFileInfoData(selectedFile);
 
         var fileSize = selectedFile.size;
-        if (fileSize < maxBlockSize) {
-            maxBlockSize = fileSize;
+        if (fileSize < maxFileSize) {
+            if (fileSize < maxBlockSize) {
+                maxBlockSize = fileSize;
+            }
+            totalBytesRemaining = fileSize;
+            setWAMSUri(selectedFile.name);
         }
-        totalBytesRemaining = fileSize;
-        setWAMSUri(selectedFile.name);
+        else {
+            displayErrorMessage("File too big.");
+        }
     }
 
     // Reads file chunks or commits block list if all chunks have been uploaded already
     AzureStorage.uploadFileInBlocks = function () {
+        $("#file-upload").hide();
+        $("#upload-button").hide();
         $("#upload-progress-holder").show();
         if (totalBytesRemaining > 0) {
             var fileContent = selectedFile.slice(currentFilePointer, currentFilePointer + maxBlockSize);
@@ -115,6 +124,7 @@
             var baseUri = data.asset.Uri;
             var indexOfQueryStart = baseUri.indexOf("?");
             submitUri = baseUri.substring(0, indexOfQueryStart) + '/' + selectedFile.name + baseUri.substring(indexOfQueryStart);
+            $("#file-select-button").prop('disabled', false);
             $("#upload-button").show();
             clearNotificationMessage();
         })
@@ -144,6 +154,7 @@
         })
         .done(function (data, status) {
             displayNotificationMessage("Upload complete, encoding task started. This might take a while, please wait...");
+            $("#upload-button").hide();
             publishWAMSAsset();
         })
         .fail(function (xhr, status, err) {
@@ -207,11 +218,13 @@
 
     // Displays notification message
     function displayNotificationMessage(notificationMessage) {
+        clearMessages();
         $("#notification").text(notificationMessage);
     }
 
     // Displays error message
     function displayErrorMessage(errorMessage) {
+        clearMessages();
         if (errorMessage != undefined && errorMessage != null && errorMessage.length != 0)
             $("#error-message").text("Error: " + errorMessage);
     }
@@ -242,7 +255,7 @@ $(document).ready(function () {
 
     if (window.File && window.FileReader && window.FileList && window.Blob) {
         // Great success! All the File APIs are supported.
-        $("#file").change(AzureStorage.handleFileSelect);
+        $("#file-select-button").change(AzureStorage.handleFileSelect);
         $("#upload-button").click(AzureStorage.uploadFileInBlocks);
     }
     else {
