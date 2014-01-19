@@ -119,7 +119,6 @@ namespace WACU.Infrastructure
                 throw new Exception("Unsupported file type.");
 
             IAsset asset = _cmContext.Assets.Where(p => p.Id == assetId).FirstOrDefault();
-            SetPrimaryAssetFile(asset, fileName);
 
             if (VideoFileSizeAllowed(asset, fileName))
             {
