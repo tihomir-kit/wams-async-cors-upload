@@ -221,15 +221,6 @@ namespace WACU.Infrastructure
         }
 
         /// <summary>
-        /// Gets latest media packager processor.
-        /// </summary>
-        /// <returns>MediaProcessor.</returns>
-        private IMediaProcessor GetLatestMediaPackagerProcessor()
-        {
-            return GetLatestMediaProcessorByName(_packagerProcessorName);
-        }
-
-        /// <summary>
         /// The possible strings that can be passed into the 
         /// method for the mediaProcessor parameter:
         ///     "Windows Azure Media Encoder"
